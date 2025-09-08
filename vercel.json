@@ -1,9 +1,5 @@
 {
-  "builds": [
-    {
-      "src": "src/package.json",
-      "use": "@vercel/static-build",
-      "config": { "distDir": "dist" }
-    }
-  ]
+  "buildCommand": "cd src && npm install && npm run build",
+  "outputDirectory": "src/dist",
+  "framework": "vite"
 }
