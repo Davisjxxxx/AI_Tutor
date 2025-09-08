@@ -18,7 +18,8 @@ from .core.config import settings
 
 # --- Memory Management ---
 class Memory:
-    pass
+    def __init__(self, path):
+        self.path = path
     # ...
 MEMORY = Memory("./aura_memory")
 
