@@ -40,6 +40,7 @@ def get_user_profile(user_id: str):
 
 # ... (_run_gemini)
     if not settings.GEMINI_API_KEY:
+        pass
         # ...
     try:
         headers = {
@@ -48,9 +49,10 @@ def get_user_profile(user_id: str):
         }
         # ...
     except requests.exceptions.RequestException as e:
+        pass
         # ...
     except (KeyError, IndexError) as e:
-        # ...
+        pass
 
     # ...
     pass
