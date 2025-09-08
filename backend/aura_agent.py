@@ -35,6 +35,7 @@ def get_user_profile(user_id: str):
         client = OpenAI(api_key=settings.OPENAI_API_KEY)
         # ...
     except Exception as e:
+        pass
         # ...
 
 # ... (_run_gemini)
