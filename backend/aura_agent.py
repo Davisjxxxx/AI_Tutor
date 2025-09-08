@@ -52,18 +52,61 @@ def get_user_profile(user_id: str):
     except (KeyError, IndexError) as e:
         # ...
 
+    # ...
+    pass
+
+# ... (get_user_profile)
+def get_user_profile(user_id: str):
+    """Retrieves a user's profile from the database."""
+    # This should be refactored to use the SQLAlchemy session
+    conn = sqlite3.connect(settings.DATABASE_URL.replace("sqlite:///", ""))
+    pass
+    # ...
+
+# ... (_run_gpt)
+    try:
+        from openai import OpenAI
+        client = OpenAI(api_key=settings.OPENAI_API_KEY)
+        pass
+        # ...
+    except Exception as e:
+        pass
+        # ...
+
+# ... (_run_gemini)
+    if not settings.GEMINI_API_KEY:
+        pass
+        # ...
+    try:
+        headers = {
+            "Content-Type": "application/json",
+            "x-goog-api-key": settings.GEMINI_API_KEY
+        }
+        pass
+        # ...
+    except requests.exceptions.RequestException as e:
+        pass
+        # ...
+    except (KeyError, IndexError) as e:
+        pass
+        # ...
+
 # ... (_run_openrouter)
     if not settings.OPENROUTER_API_KEY:
+        pass
         # ...
     try:
         headers = {
             "Authorization": f"Bearer {settings.OPENROUTER_API_KEY}",
             # ...
         }
+        pass
         # ...
     except requests.exceptions.RequestException as e:
+        pass
         # ...
     except (KeyError, IndexError) as e:
+        pass
         # ...
 
 # --- Prompt Engineering ---
@@ -160,6 +203,7 @@ def _run_gemini(prompt):
         log.error("GEMINI_API_KEY not set.")
         return "[ERROR] GEMINI_API_KEY not set."
     try:
+        pass
         # ... (code)
     except requests.exceptions.RequestException as e:
         log.error("Gemini API request failed", error=e)
@@ -174,6 +218,7 @@ def _run_openrouter(prompt):
         log.error("OPENROUTER_API_KEY not set.")
         return "[ERROR] OPENROUTER_API_KEY not set."
     try:
+        pass
         # ... (code)
     except requests.exceptions.RequestException as e:
         log.error("OpenRouter request failed", error=e)
