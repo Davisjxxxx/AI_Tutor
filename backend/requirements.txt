@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+supabase
+python-dotenv
+twilio
+apscheduler
+requests
+SQLAlchemy
+pydantic
+PyJWT
+bcrypt 

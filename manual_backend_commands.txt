@@ -1,0 +1,42 @@
+MANUAL BACKEND STARTUP COMMANDS
+=================================
+
+Due to shell environment issues, run these commands manually in your terminal:
+
+1. Check for existing uvicorn processes:
+   ps aux | grep uvicorn
+
+2. Kill any existing uvicorn processes:
+   pkill -f uvicorn
+
+3. Navigate to backend directory and start server:
+   cd /home/jd/AI_Tutor/backend
+   uvicorn main:app --reload --port 9000 &
+
+4. Wait a moment, then test if backend is responding:
+   curl http://localhost:9000/docs | head -5
+
+5. Test the signup API endpoint:
+   curl -X POST http://localhost:9000/api/auth/signup \
+        -H "Content-Type: application/json" \
+        -d '{"name": "Test User", "email": "test@example.com", "password": "password123"}'
+
+6. Check if the backend process is running:
+   ps aux | grep uvicorn
+
+ALTERNATIVE: Run the Python test script:
+   cd /home/jd/AI_Tutor
+   python3 test_backend_startup.py
+
+BACKEND ENDPOINTS TO TEST:
+- http://localhost:9000/docs (FastAPI documentation)
+- http://localhost:9000/api/auth/signup (User registration)
+- http://localhost:9000/api/auth/login (User login)
+- http://localhost:9000/api/chat (AI chat endpoint)
+- http://localhost:9000/api/memories (Memory retrieval)
+
+EXPECTED RESULTS:
+- Backend should start successfully on port 9000
+- /docs endpoint should return HTML documentation
+- /api/auth/signup should return JSON with user data and token
+- No error messages in startup logs

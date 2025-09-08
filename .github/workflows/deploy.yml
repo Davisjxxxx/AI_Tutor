@@ -1,0 +1,64 @@
+name: Deploy to Google Cloud
+
+on:
+  push:
+    branches: [ "main" ]
+
+env:
+  GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  GCP_REGION: us-central1 # Change to your preferred region
+  GCP_ARTIFACT_REGISTRY: aura-ai-tutor-backend # The name of your Artifact Registry repo
+  GCP_CLOUD_RUN_SERVICE: aura-ai-tutor-backend # The name for your Cloud Run service
+  GCP_STORAGE_BUCKET: www-aura-ai-tutor # Change to your Cloud Storage bucket name
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Authenticate to Google Cloud
+      id: auth
+      uses: 'google-github-actions/auth@v2'
+      with:
+        credentials_json: '${{ secrets.GCP_SA_KEY }}'
+
+    - name: Set up Cloud SDK
+      uses: 'google-github-actions/setup-gcloud@v2'
+
+    - name: Build and Push Docker Image
+      run: |-
+        gcloud builds submit --tag ${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.GCP_ARTIFACT_REGISTRY }}/${{ github.sha }}
+
+    - name: Deploy Backend to Cloud Run
+      id: deploy-backend
+      uses: 'google-github-actions/deploy-cloud-run@v2'
+      with:
+        service: ${{ env.GCP_CLOUD_RUN_SERVICE }}
+        region: ${{ env.GCP_REGION }}
+        image: ${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.GCP_ARTIFACT_REGISTRY }}/${{ github.sha }}
+        env_vars: |
+          DATABASE_URL=${{ secrets.DATABASE_URL }}
+          REDIS_URL=${{ secrets.REDIS_URL }}
+          JWT_SECRET=${{ secrets.JWT_SECRET }}
+          GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
+          OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
+          TWILIO_ACCOUNT_SID=${{ secrets.TWILIO_ACCOUNT_SID }}
+          TWILIO_AUTH_TOKEN=${{ secrets.TWILIO_AUTH_TOKEN }}
+
+    - name: Display Backend URL
+      run: echo "Backend deployed to ${{ steps.deploy-backend.outputs.url }}"
+
+    - name: Build Frontend
+      run: |
+        npm install
+        npm run build
+
+    - name: Deploy Frontend to Google Cloud Storage
+      run: |-
+        gsutil -m rsync -d -r ./dist gs://${{ env.GCP_STORAGE_BUCKET }}
