@@ -33,3 +33,4 @@ google-auth
 click
 charset-normalizer
 certifi
+aiosqlite
