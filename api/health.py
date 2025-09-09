@@ -1,2 +1,2 @@
-# api/index.py
+# api/health.py
 from backend.main import app
