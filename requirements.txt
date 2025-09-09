@@ -34,3 +34,4 @@ click
 charset-normalizer
 certifi
 aiosqlite
+greenlet
