@@ -1,7 +1,7 @@
 # apps/api/routers/ugc.py
 from fastapi import APIRouter, Depends, HTTPException
 from typing import List, Dict
-from core.ugc.engine import UGCEngine, UGCRequest, UGCResponse
+from ....core.ugc.engine import UGCEngine, UGCRequest, UGCResponse
 
 router = APIRouter(prefix="/ugc", tags=["ugc"])
 
