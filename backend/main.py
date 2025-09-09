@@ -36,6 +36,7 @@ from .learning_profile import LearningProfile, LearningPathGenerator, ASSESSMENT
 from .coach import router as coach_router
 from .models_coach import Base as CoachBase
 from .database import engine as coach_engine
+from sqlalchemy.ext.asyncio import AsyncSession
 from .auth import create_jwt_token, get_current_user, hash_password, verify_password
 
 app = FastAPI(title=settings.PROJECT_NAME, version=settings.VERSION)
