@@ -72,7 +72,8 @@ async def startup_event():
     log.info("Cache initialized.")
 
     # Create coach DB tables
-    CoachBase.metadata.create_all(bind=coach_engine)
+    async with coach_engine.begin() as conn:
+        await conn.run_sync(CoachBase.metadata.create_all)
     
     # Start original scheduler
     start_scheduler()
