@@ -1,11 +1,8 @@
 {
-  "functions": {
-    "api/index.py": {
-      "runtime": "@vercel/python",
-      "memory": 1024,
-      "maxDuration": 60,
-      "includeFiles": "backend/**",
-      "excludeFiles": "{backend/data/**,backend/models/**,**/*.pt,**/*.pth,**/*.onnx,**/*.bin,**/*.pdf,**/*.csv,**/*.parquet,**/__pycache__/**,.venv/**}"
-    }
-  }
+  "builds": [
+    { "src": "api/index.py", "use": "@vercel/python" }
+  ],
+  "routes": [
+    { "src": "/(.*)", "dest": "api/index.py" }
+  ]
 }
