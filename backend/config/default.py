@@ -32,5 +32,6 @@ class Settings:
 
     # This is a placeholder and should be overridden in production
     JWT_SECRET: str = "your-secret-key-change-in-production"
+    SERVICE_USER_ID: str = os.getenv("SERVICE_USER_ID", "")
 
 settings = Settings()
