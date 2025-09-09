@@ -1,0 +1,9 @@
+backend
+requirements-local.txt
+venv
+.venv
+env
+.env
+aura_memory
+Aura_AI
+AI_Tutor_backup
