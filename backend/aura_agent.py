@@ -13,6 +13,7 @@ import re
 import subprocess
 import requests
 
+import sqlite3
 from .core.config import settings
 # ... (imports)
 

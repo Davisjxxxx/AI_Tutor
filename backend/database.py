@@ -6,8 +6,12 @@ import os
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./aura.db")
 ASYNC_DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://")
 
+from sqlalchemy.orm import sessionmaker
+
 engine = create_async_engine(ASYNC_DATABASE_URL)
 AsyncSessionLocal = async_sessionmaker(engine, expire_on_commit=False)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
 
 Base = declarative_base()
 

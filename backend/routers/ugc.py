@@ -7,6 +7,9 @@ from typing import List, Optional
 import datetime
 
 from ..auth import get_current_user
+from ..core.config import settings
+
+DATABASE_PATH = settings.DATABASE_URL.replace("sqlite:///", "")
 
 router = APIRouter()
 

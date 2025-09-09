@@ -7,7 +7,7 @@ from typing import List, Dict
 from sqlalchemy.orm import Session
 import jwt
 
-from backend.database import get_db
+from backend.database import get_db, SessionLocal
 from backend.models_coach import Project, Task, CheckIn, Recall, Streak
 from backend.schemas_coach import (
     AMResponse, PMResponse, UnstickRequest, UnstickResponse, RecallQuiz
