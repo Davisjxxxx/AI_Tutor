@@ -1,63 +1,75 @@
-"""scheduler.py
-Background scheduler that checks due reminders every minute and sends SMS via Twilio.
-Stores SMS logs in `sms_log` table.
-"""
-
+# backend/scheduler.py
 import os
-import asyncio
-from datetime import datetime, timezone
-import structlog
-
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from apscheduler.triggers.cron import CronTrigger
-from dotenv import load_dotenv
+from typing import Optional
 from twilio.rest import Client as TwilioClient
+import structlog
+from datetime import datetime, timezone
 
 from .supa import supabase
 
 log = structlog.get_logger()
 
-load_dotenv()
+_twilio_client: Optional[TwilioClient] = None
 
-TWILIO_FROM = os.getenv("TWILIO_FROM")
-TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID")
-TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN")
+def get_twilio() -> Optional[TwilioClient]:
+    global _twilio_client
+    if _twilio_client:
+        return _twilio_client
+    sid = os.getenv("TWILIO_ACCOUNT_SID")
+    token = os.getenv("TWILIO_AUTH_TOKEN")
+    if not sid or not token:
+        log.warning("Twilio credentials not configured. SMS features disabled.")
+        return None
+    _twilio_client = TwilioClient(sid, token)
+    return _twilio_client
 
-_twilio = TwilioClient(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
+async def run_due_jobs():
+    """
+    This function is designed to be called by a Vercel Cron Job.
+    It processes all due reminders in a single run.
+    """
+    client = get_twilio()
+    if not client:
+        return {"processed": 0, "reason": "Twilio not configured"}
 
-async def process_due_reminders():
     now = datetime.now(timezone.utc).isoformat()
-    # select reminders due now, status active
     res = supabase.table("reminders").select("*").lte("next_run_at", now).eq("status", "active").execute()
+    
     if not res.data:
-        return
+        return {"processed": 0, "reason": "No reminders due"}
 
+    count = 0
     for row in res.data:
         phone = row.get("phone")
         message = row["message"]
         reminder_id = row["id"]
-        tenant_id = row["tenant_id"]
+        
         try:
-            sms = _twilio.messages.create(body=message, from_=TWILIO_FROM, to=phone)
-            supabase.table("sms_log").insert({
-                "reminder_id": reminder_id,
-                "tenant_id": tenant_id,
-                "twilio_sid": sms.sid,
-                "body": message,
-                "sent_at": datetime.now(timezone.utc).isoformat()
-            }).execute()
+            sms = client.messages.create(
+                body=message,
+                from_=os.getenv("TWILIO_FROM"),
+                to=phone
+            )
+            log.info("SMS sent successfully", sid=sms.sid)
+            count += 1
         except Exception as e:
             log.error("Failed to send SMS", phone=phone, error=e)
 
-        # compute next_run_at (simple: add 1 day for now)
+        # Update the reminder for the next run
         supabase.table("reminders").update({
             "last_sent_at": datetime.now(timezone.utc).isoformat(),
-            "next_run_at": datetime.now(timezone.utc).replace(hour= row["next_run_at"].hour, minute=row["next_run_at"].minute).isoformat()
+            "next_run_at": (datetime.now(timezone.utc) + datetime.timedelta(days=1)).isoformat() # Simple daily for now
         }).eq("id", reminder_id).execute()
+        
+    return {"processed": count}
 
-
+# This function is for local development only and should not be called on Vercel
 def start_scheduler():
-    scheduler = AsyncIOScheduler()
-    scheduler.add_job(process_due_reminders, CronTrigger(minute="*") )
-    scheduler.start()
-    log.info("Scheduler started for reminders.") 
+    from apscheduler.schedulers.background import BackgroundScheduler
+    
+    IS_VERCEL = os.getenv("VERCEL") == "1"
+    if os.getenv("ENABLE_SCHEDULER") == "1" and not IS_VERCEL:
+        scheduler = BackgroundScheduler()
+        scheduler.add_job(run_due_jobs, 'interval', minutes=1)
+        scheduler.start()
+        log.info("Local background scheduler started.")

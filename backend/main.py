@@ -75,8 +75,13 @@ async def startup_event():
     async with coach_engine.begin() as conn:
         await conn.run_sync(CoachBase.metadata.create_all)
     
-    # Start original scheduler
-    start_scheduler()
+    # Start original scheduler only in non-Vercel environments
+    IS_VERCEL = os.getenv("VERCEL") == "1"
+    if os.getenv("ENABLE_SCHEDULER") == "1" and not IS_VERCEL:
+        start_scheduler()
+        log.info("Local scheduler started.")
+    else:
+        log.info("Scheduler disabled in Vercel environment.")
 
     # ---- APScheduler jobs for Coach ----
     sched = BackgroundScheduler(timezone=os.getenv("APP_TZ","America/Chicago"))
