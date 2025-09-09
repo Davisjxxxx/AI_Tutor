@@ -26,8 +26,9 @@ from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
 
 from .core.config import settings
+from .database import Base, engine
 from . import models, schemas
-from .database import get_db
+from .database import get_db, Base, engine
 from .agent_router import agent_router
 from .aura_agent import get_aura_response, MEMORY
 from .scheduler import start_scheduler
@@ -35,149 +36,7 @@ from .learning_profile import LearningProfile, LearningPathGenerator, ASSESSMENT
 from .coach import router as coach_router
 from .models_coach import Base as CoachBase
 from .database import engine as coach_engine
-
-# Structured Logging Configuration
-structlog.configure(
-    processors=[
-        structlog.contextvars.merge_contextvars,
-        structlog.stdlib.add_logger_name,
-        structlog.stdlib.add_log_level,
-        structlog.processors.TimeStamper(fmt="iso"),
-        structlog.processors.JSONRenderer(),
-    ],
-    wrapper_class=structlog.stdlib.BoundLogger,
-    logger_factory=structlog.stdlib.LoggerFactory(),
-    cache_logger_on_first_use=True,
-)
-log = structlog.get_logger()
-
-# Create DB tables on startup
-Base.metadata.create_all(bind=engine)
-
-limiter = Limiter(key_func=get_remote_address)
-app = FastAPI(title=settings.PROJECT_NAME, version=settings.VERSION)
-app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
-
-# Middleware
-@app.middleware("http")
-async def root_middleware(request: Request, call_next):
-    structlog.contextvars.clear_contextvars()
-    request_id = str(uuid.uuid4())
-    structlog.contextvars.bind_contextvars(request_id=request_id)
-    start_time = time.monotonic()
-    log.info("request_started", method=request.method, path=request.url.path, client=request.client.host)
-    
-    response = await call_next(request)
-    
-    process_time = (time.monotonic() - start_time) * 1000
-    log.info(
-        "request_finished",
-        method=request.method,
-        path=request.url.path,
-        status_code=response.status_code,
-        process_time_ms=round(process_time, 2),
-    )
-    response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self';"
-    return response
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:5173", "https://your-production-domain.com"], # Configure this properly for production
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# Routers
-from .routers import ugc as ugc_storage_router
-from .apps.api.routers import ugc as ugc_generation_router
-from .routers import health
-app.include_router(coach_router)
-app.include_router(ugc_storage_router.router)
-app.include_router(ugc_generation_router.router)
-app.include_router(health.router)
-
-@app.get("/health")
-async def health_check():
-    return {"status": "ok"}
-
-# Dependency
-
-
-# --- Authentication Helper Functions ---
-def hash_password(password: str) -> str:
-    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-
-def verify_password(password: str, hashed: str) -> bool:
-    return bcrypt.checkpw(password.encode('utf-8'), hashed.encode('utf-8'))
-
-def create_jwt_token(user_id: str) -> str:
-    payload = {
-        'user_id': user_id,
-        'exp': datetime.datetime.utcnow() + datetime.timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    }
-    return jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
-
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-async def get_user(db: AsyncSession, user_id: str):
-    result = await db.execute(select(models.User).filter(models.User.id == user_id))
-    return result.scalars().first()
-
-async def get_user_by_email(db: AsyncSession, email: str):
-    result = await db.execute(select(models.User).filter(models.User.email == email))
-    return result.scalars().first()
-
-async def create_user(db: AsyncSession, user: schemas.UserCreate):
-    hashed_password = hash_password(user.password)
-    db_user = models.User(
-        id=str(uuid.uuid4()), 
-        email=user.email, 
-        name=user.name, 
-        password_hash=hashed_password
-    )
-    db.add(db_user)
-    await db.commit()
-    await db.refresh(db_user)
-    return db_user
-
-# --- Authentication Endpoints ---
-@app.post("/api/auth/signup", response_model=schemas.AuthResponse)
-@limiter.limit("10/minute")
-async def signup(request: Request, user_data: schemas.UserCreate, db: AsyncSession = Depends(get_db)):
-    db_user = await get_user_by_email(db, email=user_data.email)
-    if db_user:
-        raise HTTPException(status_code=400, detail="Email already registered")
-    created_user = await create_user(db=db, user=user_data)
-    token = create_jwt_token(created_user.id)
-    return schemas.AuthResponse(user=created_user, token=token, success=True, message="Account created successfully")
-
-@app.post("/api/auth/login", response_model=schemas.AuthResponse)
-@limiter.limit("5/minute")
-async def login(request: Request, login_data: schemas.UserLogin, db: AsyncSession = Depends(get_db)):
-    user = await get_user_by_email(db, email=login_data.email)
-    if not user or not verify_password(login_data.password, user.password_hash):
-        raise HTTPException(status_code=401, detail="Invalid email or password")
-    token = create_jwt_token(user.id)
-    return schemas.AuthResponse(user=user, token=token, success=True, message="Login successful")
-
-@app.get("/api/auth/me", response_model=schemas.User)
-async def get_current_user(db: AsyncSession = Depends(get_db), authorization: HTTPAuthorizationCredentials = Depends(HTTPBearer())):
-    token = authorization.credentials
-    try:
-        payload = jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
-        user_id = payload.get('user_id')
-        if user_id is None:
-            raise HTTPException(status_code=401, detail="Invalid token")
-        user = await get_user(db, user_id=user_id)
-        if not user:
-            raise HTTPException(status_code=401, detail="User not found")
-        return user
-    except jwt.ExpiredSignatureError:
-        raise HTTPException(status_code=401, detail="Token expired")
-    except jwt.InvalidTokenError:
-        raise HTTPException(status_code=401, detail="Invalid token")
+from .auth import create_jwt_token, get_current_user, hash_password, verify_password
 
 @app.post("/api/auth/google", response_model=schemas.AuthResponse)
 async def google_auth(google_token: Dict[str, str], db: AsyncSession = Depends(get_db)):

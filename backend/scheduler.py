@@ -13,7 +13,7 @@ from apscheduler.triggers.cron import CronTrigger
 from dotenv import load_dotenv
 from twilio.rest import Client as TwilioClient
 
-from supa import supabase
+from .supa import supabase
 
 log = structlog.get_logger()
 
