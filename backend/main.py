@@ -38,6 +38,8 @@ from .models_coach import Base as CoachBase
 from .database import engine as coach_engine
 from .auth import create_jwt_token, get_current_user, hash_password, verify_password
 
+app = FastAPI(title=settings.PROJECT_NAME, version=settings.VERSION)
+
 @app.post("/api/auth/google", response_model=schemas.AuthResponse)
 async def google_auth(google_token: Dict[str, str], db: AsyncSession = Depends(get_db)):
     token = google_token.get("credential")
