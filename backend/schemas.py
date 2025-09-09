@@ -28,3 +28,13 @@ class AuthResponse(BaseModel):
     token: str
     success: bool
     message: str
+
+class ChatMessage(BaseModel):
+    message: str
+    user_id: str
+    engine: str = "llama"
+
+class ChatResponse(BaseModel):
+    response: str
+    success: bool
+    error: Optional[str] = None
