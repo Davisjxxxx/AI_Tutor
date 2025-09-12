@@ -1,18 +1,25 @@
-.venv/
+# VCS
+.git
+# Python
+.venv
+venv
+__pycache__
 *.pyc
-__pycache__/
-.git/
-node_modules/
-backend/data/
-backend/models/
-*.pt
-*.pth
-*.bin
-*.onnx
-*.pdf
-*.csv
-*.parquet
-requirements-local.txt
-aura_memory/
+# Node
+node_modules
+# IDEs / SDKs / Binaries
+.Aura_AI/
 Aura_AI/
-AI_Tutor_backup/
+android-studio*/
+**/*.jar
+**/*.so
+**/*.dylib
+**/*.exe
+**/*.zip
+**/*.tar
+**/*.gz
+# Build artifacts
+dist
+build
+.out
+.next/cache
